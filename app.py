@@ -10,16 +10,25 @@ from urllib.parse import urlparse, parse_qs
 def load_data():
     url = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/FRE/DADOS/fre_cia_aberta_2024.zip"
     
-    response = requests.get(url)
+    response = requests.get(url, stream=True)
     if response.status_code == 200:
         zip_file = zipfile.ZipFile(io.BytesIO(response.content))
-        csv_filename = [name for name in zip_file.namelist() if name.endswith(".csv")][0]  # Pega o nome do CSV
+        
+        # Filtrando o nome correto do CSV dentro do ZIP
+        csv_filename = [name for name in zip_file.namelist() if name.endswith(".csv")][0]
+        
         with zip_file.open(csv_filename) as file:
-            df = pd.read_csv(file, sep=';', dtype=str)
+            try:
+                df = pd.read_csv(file, sep=';', dtype=str, encoding="latin1", on_bad_lines="skip")
+                st.success("Dados carregados com sucesso!")
+            except Exception as e:
+                st.error(f"Erro ao carregar CSV: {e}")
+                return pd.DataFrame()  # Retorna um DataFrame vazio se falhar
+        
         return df
     else:
         st.error("Erro ao baixar os dados da CVM")
-        return pd.DataFrame()  # Retorna um DataFrame vazio em caso de erro
+        return pd.DataFrame()  # Retorna um DataFrame vazio se falhar
 
 def extract_document_number(url):
     parsed_url = urlparse(url)
