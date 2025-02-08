@@ -3,5 +3,5 @@ pandas
 requests
 beautifulsoup4
 lxml
-
-zipfile36
+PyPDF2
+openai
