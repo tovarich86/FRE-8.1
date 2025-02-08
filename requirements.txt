@@ -2,6 +2,8 @@ streamlit
 pandas
 requests
 beautifulsoup4
-PyPDF2
-spacy
-textwrap
+urllib3
+pdfplumber
+transformers
+torch
+textwrap3
