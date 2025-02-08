@@ -25,7 +25,8 @@ def extract_document_number(url):
     return query_params.get("NumeroSequencialDocumento", [None])[0]
 
 def generate_fre_url(doc_number, item):
-    return f"https://www.rad.cvm.gov.br/ENET/frmExibirArquivoFRE.aspx?NumeroSequencialDocumento={doc_number}&CodigoGrupo=8000&CodigoQuadro=8120&Tipo=&RelatorioRevisaoEspecial=&CodTipoDocumento=9&Hash=5YEUulvbdZXe33BVxOH8iNkjFXWVksCC5Ic0zg4LGU"
+    codigo_quadro = "8120" if item == "8.4" else "8110"  # Ajuste correto do código do quadro
+    return f"https://www.rad.cvm.gov.br/ENET/frmExibirArquivoFRE.aspx?NumeroSequencialDocumento={doc_number}&CodigoGrupo=8000&CodigoQuadro={codigo_quadro}&Tipo=&RelatorioRevisaoEspecial=&CodTipoDocumento=9&Hash=5YEUulvbdZXe33BVxOH8iNkjFXWVksCC5Ic0zg4LGU"
 
 def download_pdf(url):
     headers = {"User-Agent": "Mozilla/5.0"}
