@@ -2,10 +2,11 @@ import streamlit as st
 import pandas as pd
 import base64
 import requests
-import zipfile
 import io
-from bs4 import BeautifulSoup
 from urllib.parse import urlparse, parse_qs
+from PyPDF2 import PdfReader
+import tempfile
+import openai
 
 CSV_URL = "https://github.com/tovarich86/FRE-8.1/raw/refs/heads/main/fre_cia_aberta_2024.csv"  # Substitua pelo link correto
 
@@ -25,22 +26,44 @@ def extract_document_number(url):
     return query_params.get("NumeroSequencialDocumento", [None])[0]
 
 def generate_fre_url(doc_number, item):
-    codigo_quadro = "8120" if item == "8.4" else "8030"  # Ajuste correto do código do quadro
-    return f"https://www.rad.cvm.gov.br/ENET/frmExibirArquivoFRE.aspx?NumeroSequencialDocumento={doc_number}&CodigoGrupo=8000&CodigoQuadro={codigo_quadro}&Tipo=&RelatorioRevisaoEspecial=&CodTipoDocumento=9&Hash=5YEUulvbdZXe33BVxOH8iNkjFXWVksCC5Ic0zg4LGU"
+    codigo_quadro = "8120" if item == "8.4" else "8110"  # Ajuste correto do código do quadro
+    return f"https://www.rad.cvm.gov.br/ENET/frmExibirArquivoFRE.aspx?NumeroSequencialDocumento={doc_number}&CodigoGrupo=8000&CodigoQuadro={codigo_quadro}&Tipo=&RelatorioRevisaoEspecial=&CodTipoDocumento=9"
 
 def download_pdf(url):
-    headers = {"User-Agent": "Mozilla/5.0"}
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
+        "Referer": "https://www.rad.cvm.gov.br/",
+    }
     response = requests.get(url, headers=headers)
+
+    if response.status_code == 200 and "application/pdf" in response.headers.get("Content-Type", ""):
+        return response.content  # Retorna o binário do PDF diretamente
+    else:
+        st.error(f"Erro ao acessar a página ({response.status_code}). Verifique se o documento está disponível.")
+        return None
+
+def summarize_pdf(pdf_content):
+    """Lê o PDF e gera um resumo dos principais pontos usando IA."""
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmpfile:
+        tmpfile.write(pdf_content)
+        tmpfile_path = tmpfile.name
     
-    if response.status_code == 200:
-        soup = BeautifulSoup(response.text, "html.parser")
-        hidden_input = soup.find("input", {"id": "hdnConteudoArquivo"})
-        
-        if hidden_input:
-            base64_string = hidden_input["value"]
-            pdf_bytes = base64.b64decode(base64_string)
-            return pdf_bytes
-    return None
+    reader = PdfReader(tmpfile_path)
+    text = "\n".join([page.extract_text() for page in reader.pages if page.extract_text()])
+    
+    if len(text) > 5000:  # Limita o tamanho do texto para evitar cortes
+        text = text[:5000]
+    
+    # Chamada para IA
+    openai.api_key = "SUA_API_OPENAI"  # Substitua pela sua chave
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "Resuma o seguinte documento destacando os principais pontos:"},
+            {"role": "user", "content": text}
+        ]
+    )
+    return response["choices"][0]["message"]["content"]
 
 df = load_data()
 st.title("Visualizador de Documentos FRE - CVM")
@@ -73,5 +96,10 @@ if not df.empty:
             file_name=filename,
             mime="application/pdf"
         )
+        
+        if st.button("Gerar Resumo do Documento"):
+            summary = summarize_pdf(pdf_content)
+            st.write("### Resumo do Documento:")
+            st.write(summary)
     else:
         st.error("Falha ao baixar o documento.")
