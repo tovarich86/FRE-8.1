@@ -4,6 +4,7 @@ import base64
 import requests
 import zipfile
 import io
+import tempfile
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, parse_qs
 
@@ -51,13 +52,14 @@ def download_pdf(url):
             return pdf_bytes
     return None
 
-def show_pdf_inline(pdf_content):
-    """Exibe o PDF inline no próprio Streamlit usando um iframe Base64."""
-    base64_pdf = base64.b64encode(pdf_content).decode("utf-8")
-    pdf_display = f"""
-    <iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="800px"></iframe>
-    """
-    st.markdown(pdf_display, unsafe_allow_html=True)
+def show_pdf_with_tempfile(pdf_content):
+    """Salva o PDF temporariamente e exibe no Streamlit como link local."""
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmpfile:
+        tmpfile.write(pdf_content)
+        tmpfile_path = tmpfile.name
+    
+    st.write("Visualize o PDF clicando no link abaixo:")
+    st.markdown(f"[Clique aqui para abrir o PDF]({tmpfile_path})", unsafe_allow_html=True)
 
 st.title("Visualizador de Documentos FRE - CVM")
 df = load_data()
@@ -79,8 +81,7 @@ if not df.empty:
     if st.button("Visualizar PDF no app"):
         pdf_content = download_pdf(fre_url)
         if pdf_content:
-            st.write("Pré-visualização do PDF:")
-            show_pdf_inline(pdf_content)
+            show_pdf_with_tempfile(pdf_content)
         else:
             st.error("Falha ao baixar o documento.")
 
@@ -95,3 +96,14 @@ if not df.empty:
             )
         else:
             st.error("Falha ao baixar o documento.")
+
+# Para hospedagem no GitHub e execução no Streamlit Cloud:
+# 1. Salve este arquivo como `app.py`
+# 2. Crie um arquivo `requirements.txt` com o seguinte conteúdo:
+# streamlit
+# pandas
+# requests
+# beautifulsoup4
+# lxml
+# 3. Faça upload para um repositório no GitHub
+# 4. Vá até https://share.streamlit.io e conecte ao repositório
