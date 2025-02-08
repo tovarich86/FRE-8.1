@@ -4,4 +4,4 @@ requests
 beautifulsoup4
 lxml
 PyPDF2
-openai
+sumy
