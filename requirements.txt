@@ -2,7 +2,7 @@ streamlit
 pandas
 requests
 beautifulsoup4
-lxml
 PyPDF2
-sumy
-nltk
+spacy
+textwrap
+
