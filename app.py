@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import base64
+import requests
+from bs4 import BeautifulSoup
 from urllib.parse import urlparse, parse_qs
 
 def load_data():
@@ -15,6 +17,20 @@ def extract_document_number(url):
 
 def generate_fre_url(doc_number, item):
     return f"https://www.rad.cvm.gov.br/ENET/frmExibirArquivoFRE.aspx?NumeroSequencialDocumento={doc_number}&CodigoGrupo=8000&CodigoQuadro=8120&Tipo=&RelatorioRevisaoEspecial=&CodTipoDocumento=9&Hash=5YEUulvbdZXe33BVxOH8iNkjFXWVksCC5Ic0zg4LGU"
+
+def download_pdf(url):
+    headers = {"User-Agent": "Mozilla/5.0"}
+    response = requests.get(url, headers=headers)
+    
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.text, "html.parser")
+        hidden_input = soup.find("input", {"id": "hdnConteudoArquivo"})
+        
+        if hidden_input:
+            base64_string = hidden_input["value"]
+            pdf_bytes = base64.b64decode(base64_string)
+            return pdf_bytes
+    return None
 
 st.title("Visualizador de Documentos FRE - CVM")
 df = load_data()
@@ -32,3 +48,15 @@ fre_url = generate_fre_url(document_number, selected_item)
 
 st.write(f"### Documento FRE da {selected_company} - Item {selected_item}")
 st.write(f"[Clique aqui para acessar o documento]({fre_url})")
+
+if st.button("Baixar PDF"):
+    pdf_content = download_pdf(fre_url)
+    if pdf_content:
+        st.download_button(
+            label="Clique aqui para baixar o PDF",
+            data=pdf_content,
+            file_name="documento_cvm.pdf",
+            mime="application/pdf"
+        )
+    else:
+        st.error("Falha ao baixar o documento.")
