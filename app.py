@@ -3,6 +3,7 @@ import pandas as pd
 import base64
 import requests
 import io
+import nltk
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, parse_qs
 from PyPDF2 import PdfReader
@@ -13,11 +14,15 @@ from sumy.summarizers.lsa import LsaSummarizer
 from sumy.nlp.stemmers import Stemmer
 from sumy.utils import get_stop_words
 
+# Baixar tokenizer do nltk (importante para evitar erros)
+nltk.download("punkt")
+
 CSV_URL = "https://github.com/tovarich86/FRE-8.1/raw/refs/heads/main/fre_cia_aberta_2024.csv"
 
 st.title("Visualizador de Documentos FRE - CVM")
 
 def load_data():
+    """Carrega os dados CSV diretamente do repositório GitHub"""
     response = requests.get(CSV_URL)
     if response.status_code == 200:
         try:
@@ -32,15 +37,18 @@ def load_data():
         return pd.DataFrame()
 
 def extract_document_number(url):
+    """Extrai o número sequencial do documento a partir da URL"""
     parsed_url = urlparse(url)
     query_params = parse_qs(parsed_url.query)
     return query_params.get("NumeroSequencialDocumento", [None])[0]
 
 def generate_fre_url(doc_number, item):
+    """Gera a URL do documento FRE no site da CVM"""
     codigo_quadro = "8120" if item == "8.4" else "8030"
     return f"https://www.rad.cvm.gov.br/ENET/frmExibirArquivoFRE.aspx?NumeroSequencialDocumento={doc_number}&CodigoGrupo=8000&CodigoQuadro={codigo_quadro}&Tipo=&RelatorioRevisaoEspecial=&CodTipoDocumento=9"
 
 def download_pdf(url):
+    """Baixa o PDF codificado em Base64 do site da CVM"""
     headers = {"User-Agent": "Mozilla/5.0"}
     response = requests.get(url, headers=headers)
     
@@ -55,21 +63,28 @@ def download_pdf(url):
     return None
 
 def summarize_pdf(pdf_content):
-    """Lê o PDF e gera um resumo dos principais pontos usando sumy."""
+    """Lê o PDF e gera um resumo dos principais pontos usando sumy"""
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmpfile:
         tmpfile.write(pdf_content)
         tmpfile_path = tmpfile.name
-    
+
     reader = PdfReader(tmpfile_path)
     text = "\n".join([page.extract_text() for page in reader.pages if page.extract_text()])
 
-    parser = PlaintextParser.from_string(text, Tokenizer("portuguese"))
-    stemmer = Stemmer("portuguese")
-    summarizer = LsaSummarizer(stemmer)
-    summarizer.stop_words = get_stop_words("portuguese")
+    # Verifica se conseguiu extrair texto
+    if not text.strip():
+        return "Não foi possível extrair texto do PDF."
 
-    summary = summarizer(parser.document, sentences_count=10)
-    return " ".join([str(sentence) for sentence in summary])
+    try:
+        parser = PlaintextParser.from_string(text, Tokenizer("portuguese"))
+        stemmer = Stemmer("portuguese")
+        summarizer = LsaSummarizer(stemmer)
+        summarizer.stop_words = get_stop_words("portuguese")
+
+        summary = summarizer(parser.document, sentences_count=10)
+        return " ".join([str(sentence) for sentence in summary])
+    except LookupError:
+        return "Erro ao carregar o tokenizador. Tente reiniciar o aplicativo."
 
 df = load_data()
 
