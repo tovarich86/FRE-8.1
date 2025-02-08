@@ -2,15 +2,9 @@ import streamlit as st
 import requests
 import base64
 import pdfplumber
-import textwrap
 import io
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, parse_qs
-from transformers import pipeline
-import pandas as pd
-
-# Baixa o modelo de sumarização
-summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
 
 CSV_URL = "https://github.com/tovarich86/FRE-8.1/raw/refs/heads/main/fre_cia_aberta_2024.csv"
 
@@ -42,23 +36,6 @@ def download_pdf(url):
             return pdf_bytes
     return None
 
-def extract_text_from_pdf(pdf_content):
-    """Extrai texto do PDF com pdfplumber"""
-    text = ""
-    with pdfplumber.open(io.BytesIO(pdf_content)) as pdf:
-        for page in pdf.pages:
-            text += page.extract_text() + "\n"
-    return text.strip()
-
-def summarize_text(text):
-    """Gera um resumo do texto extraído"""
-    if len(text) < 500:
-        return "⚠️ O documento não contém informações suficientes para resumo."
-    
-    text_chunks = [text[i:i+1024] for i in range(0, len(text), 1024)]
-    summary = " ".join([summarizer(chunk, max_length=150, min_length=50, do_sample=False)[0]['summary_text'] for chunk in text_chunks])
-    return textwrap.fill(summary, width=80)
-
 df = pd.read_csv(CSV_URL, sep=';', dtype=str, encoding="latin1", on_bad_lines="skip")
 df = df.sort_values(by=["DENOM_CIA", "VERSAO"], ascending=[True, False])
 
@@ -87,16 +64,3 @@ if not df.empty:
             )
         else:
             st.error("❌ Falha ao baixar o documento.")
-    
-    if st.button("📄 Gerar Resumo do Documento"):
-        pdf_content = download_pdf(fre_url)
-        if pdf_content:
-            extracted_text = extract_text_from_pdf(pdf_content)
-            if extracted_text:
-                summary = summarize_text(extracted_text)
-                st.write("### ✍️ Resumo do Documento:")
-                st.write(summary)
-            else:
-                st.error("❌ O PDF não contém texto extraível.")
-        else:
-            st.error("❌ Erro ao baixar o documento para resumo.")
