@@ -2,33 +2,21 @@ import streamlit as st
 import pandas as pd
 import base64
 import requests
-import zipfile
 import io
+import tempfile
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, parse_qs
 
+@st.cache_data
 def load_data():
-    url = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/FRE/DADOS/fre_cia_aberta_2024.zip"
-    
-    response = requests.get(url, stream=True)
-    if response.status_code == 200:
-        zip_file = zipfile.ZipFile(io.BytesIO(response.content))
-        
-        # Filtrando o nome correto do CSV dentro do ZIP
-        csv_filename = [name for name in zip_file.namelist() if name.endswith(".csv")][0]
-        
-        with zip_file.open(csv_filename) as file:
-            try:
-                df = pd.read_csv(file, sep=';', dtype=str, encoding="latin1", on_bad_lines="skip")
-                st.success("Dados carregados com sucesso!")
-            except Exception as e:
-                st.error(f"Erro ao carregar CSV: {e}")
-                return pd.DataFrame()  # Retorna um DataFrame vazio se falhar
-        
-        return df
-    else:
-        st.error("Erro ao baixar os dados da CVM")
-        return pd.DataFrame()  # Retorna um DataFrame vazio se falhar
+    """Carrega o CSV do GitHub e mantém em cache para evitar recarregamentos constantes."""
+    url = "https://github.com/tovarich86/FRE-8.1/blob/main/fre_cia_aberta_2024.csv"  # Substitua pela sua URL real
+    try:
+        df = pd.read_csv(url, sep=';', dtype=str, encoding="latin1", on_bad_lines="skip")
+        return df.sort_values(by=["DENOM_CIA", "VERSAO"], ascending=[True, False])
+    except Exception as e:
+        st.error(f"Erro ao carregar o CSV do GitHub: {e}")
+        return pd.DataFrame()
 
 def extract_document_number(url):
     parsed_url = urlparse(url)
@@ -52,11 +40,20 @@ def download_pdf(url):
             return pdf_bytes
     return None
 
-st.title("Visualizador de Documentos FRE - CVM")
+def show_pdf_with_tempfile(pdf_content, company, item):
+    """Salva o PDF temporariamente e exibe um link para visualização."""
+    filename = f"{company.replace(' ', '_')}_Item_{item}.pdf"
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmpfile:
+        tmpfile.write(pdf_content)
+        tmpfile_path = tmpfile.name
+    
+    st.write("Visualize o PDF clicando no link abaixo:")
+    st.markdown(f"[Clique aqui para abrir o PDF]({tmpfile_path})", unsafe_allow_html=True)
+
 df = load_data()
+st.title("Visualizador de Documentos FRE - CVM")
 
 if not df.empty:
-    df = df.sort_values(by=["DENOM_CIA", "VERSAO"], ascending=[True, False])
     selected_company = st.selectbox("Selecione a empresa", df["DENOM_CIA"].unique())
 
     df_filtered = df[df["DENOM_CIA"] == selected_company]
@@ -68,15 +65,22 @@ if not df.empty:
     fre_url = generate_fre_url(document_number, selected_item)
 
     st.write(f"### Documento FRE da {selected_company} - Item {selected_item}")
-    st.write(f"[Clique aqui para acessar o documento]({fre_url})")
+    
+    if st.button("Visualizar PDF no app"):
+        pdf_content = download_pdf(fre_url)
+        if pdf_content:
+            show_pdf_with_tempfile(pdf_content, selected_company, selected_item)
+        else:
+            st.error("Falha ao baixar o documento.")
 
     if st.button("Baixar PDF"):
         pdf_content = download_pdf(fre_url)
         if pdf_content:
+            filename = f"{selected_company.replace(' ', '_')}_Item_{selected_item}.pdf"
             st.download_button(
                 label="Clique aqui para baixar o PDF",
                 data=pdf_content,
-                file_name="documento_cvm.pdf",
+                file_name=filename,
                 mime="application/pdf"
             )
         else:
