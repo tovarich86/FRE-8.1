@@ -25,7 +25,7 @@ def extract_document_number(url):
     return query_params.get("NumeroSequencialDocumento", [None])[0]
 
 def generate_fre_url(doc_number, item):
-    codigo_quadro = "8120" if item == "8.4" else "8030"  # Ajuste correto do código do quadro
+    codigo_quadro = "8120" if item == "8.4" else "8110"  # Ajuste correto do código do quadro
     return f"https://www.rad.cvm.gov.br/ENET/frmExibirArquivoFRE.aspx?NumeroSequencialDocumento={doc_number}&CodigoGrupo=8000&CodigoQuadro={codigo_quadro}&Tipo=&RelatorioRevisaoEspecial=&CodTipoDocumento=9&Hash=5YEUulvbdZXe33BVxOH8iNkjFXWVksCC5Ic0zg4LGU"
 
 def download_pdf(url):
@@ -64,15 +64,14 @@ if not df.empty:
         unsafe_allow_html=True
     )
 
-    if st.button("Baixar PDF"):
-        pdf_content = download_pdf(fre_url)
-        if pdf_content:
-            filename = f"{selected_company.replace(' ', '_')}_Item_{selected_item}.pdf"
-            st.download_button(
-                label="Clique aqui para baixar o PDF",
-                data=pdf_content,
-                file_name=filename,
-                mime="application/pdf"
-            )
-        else:
-            st.error("Falha ao baixar o documento.")
+    pdf_content = download_pdf(fre_url)
+    if pdf_content:
+        filename = f"{selected_company.replace(' ', '_')}_Item_{selected_item}.pdf"
+        st.download_button(
+            label="Baixar PDF",
+            data=pdf_content,
+            file_name=filename,
+            mime="application/pdf"
+        )
+    else:
+        st.error("Falha ao baixar o documento.")
