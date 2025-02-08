@@ -5,6 +5,7 @@ import pdfplumber
 import io
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, parse_qs
+import pandas as pd
 
 CSV_URL = "https://github.com/tovarich86/FRE-8.1/raw/refs/heads/main/fre_cia_aberta_2024.csv"
 
