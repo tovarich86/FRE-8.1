@@ -4,6 +4,6 @@ requests
 beautifulsoup4
 urllib3
 pdfplumber
-transformers
-torch
-textwrap3
+transformers==4.35.2
+torch==2.0.1+cpu --index-url https://download.pytorch.org/whl/cpu
+text
