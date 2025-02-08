@@ -52,12 +52,25 @@ def download_pdf(url):
     return None
 
 def show_pdf(pdf_content):
-    """Exibe o PDF no Streamlit usando um visualizador embutido."""
+    """Exibe o PDF no Streamlit usando PDF.js para evitar bloqueios."""
     base64_pdf = base64.b64encode(pdf_content).decode("utf-8")
     pdf_display = f"""
-    <iframe src="data:application/pdf;base64,{base64_pdf}" width="700" height="900" type="application/pdf"></iframe>
+    <script>
+        function openPDF() {{
+            var byteCharacters = atob("{base64_pdf}");
+            var byteNumbers = new Array(byteCharacters.length);
+            for (var i = 0; i < byteCharacters.length; i++) {{
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }}
+            var byteArray = new Uint8Array(byteNumbers);
+            var blob = new Blob([byteArray], {{type: 'application/pdf'}});
+            var url = URL.createObjectURL(blob);
+            window.open(url);
+        }}
+    </script>
+    <button onclick="openPDF()">Abrir PDF</button>
     """
-    st.components.v1.html(pdf_display, height=950)
+    st.components.v1.html(pdf_display, height=50)
 
 st.title("Visualizador de Documentos FRE - CVM")
 df = load_data()
@@ -79,7 +92,7 @@ if not df.empty:
     if st.button("Visualizar PDF no app"):
         pdf_content = download_pdf(fre_url)
         if pdf_content:
-            st.write("Pré-visualização do PDF:")
+            st.write("Clique no botão abaixo para visualizar o PDF:")
             show_pdf(pdf_content)
         else:
             st.error("Falha ao baixar o documento.")
