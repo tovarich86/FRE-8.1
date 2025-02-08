@@ -3,18 +3,19 @@ import pandas as pd
 import base64
 import requests
 import io
-import openai
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, parse_qs
 from PyPDF2 import PdfReader
 import tempfile
+from sumy.parsers.plaintext import PlaintextParser
+from sumy.nlp.tokenizers import Tokenizer
+from sumy.summarizers.lsa import LsaSummarizer
+from sumy.nlp.stemmers import Stemmer
+from sumy.utils import get_stop_words
 
 CSV_URL = "https://github.com/tovarich86/FRE-8.1/raw/refs/heads/main/fre_cia_aberta_2024.csv"
 
 st.title("Visualizador de Documentos FRE - CVM")
-
-# Campo para inserir a API Key do OpenAI de forma segura
-api_key = st.text_input("Insira sua OpenAI API Key", type="password")
 
 def load_data():
     response = requests.get(CSV_URL)
@@ -36,7 +37,7 @@ def extract_document_number(url):
     return query_params.get("NumeroSequencialDocumento", [None])[0]
 
 def generate_fre_url(doc_number, item):
-    codigo_quadro = "8120" if item == "8.4" else "8030"  # Ajuste correto do código do quadro
+    codigo_quadro = "8120" if item == "8.4" else "8030"
     return f"https://www.rad.cvm.gov.br/ENET/frmExibirArquivoFRE.aspx?NumeroSequencialDocumento={doc_number}&CodigoGrupo=8000&CodigoQuadro={codigo_quadro}&Tipo=&RelatorioRevisaoEspecial=&CodTipoDocumento=9"
 
 def download_pdf(url):
@@ -53,12 +54,8 @@ def download_pdf(url):
             return pdf_bytes
     return None
 
-def summarize_pdf(pdf_content, api_key):
-    """Lê o PDF e gera um resumo dos principais pontos usando IA."""
-    if not api_key:
-        st.error("Por favor, insira sua API Key do OpenAI para gerar o resumo.")
-        return None
-    
+def summarize_pdf(pdf_content):
+    """Lê o PDF e gera um resumo dos principais pontos usando sumy."""
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmpfile:
         tmpfile.write(pdf_content)
         tmpfile_path = tmpfile.name
@@ -66,24 +63,14 @@ def summarize_pdf(pdf_content, api_key):
     reader = PdfReader(tmpfile_path)
     text = "\n".join([page.extract_text() for page in reader.pages if page.extract_text()])
 
-    if len(text) > 5000:  # Limita o tamanho do texto para evitar cortes
-        text = text[:5000]
+    parser = PlaintextParser.from_string(text, Tokenizer("portuguese"))
+    stemmer = Stemmer("portuguese")
+    summarizer = LsaSummarizer(stemmer)
+    summarizer.stop_words = get_stop_words("portuguese")
 
-    openai_client = openai.OpenAI(api_key=api_key)  # Cliente atualizado
+    summary = summarizer(parser.document, sentences_count=10)
+    return " ".join([str(sentence) for sentence in summary])
 
-    try:
-        response = openai_client.chat.completions.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": "Resuma o seguinte documento destacando os principais pontos:"},
-                {"role": "user", "content": text}
-            ]
-        )
-        return response.choices[0].message.content  # Ajuste conforme nova API
-    except Exception as e:
-        st.error(f"Erro ao gerar o resumo: {e}")
-        return None
-        
 df = load_data()
 
 if not df.empty:
@@ -115,7 +102,7 @@ if not df.empty:
     if st.button("Gerar Resumo do Documento"):
         pdf_content = download_pdf(fre_url)
         if pdf_content:
-            summary = summarize_pdf(pdf_content, api_key)
+            summary = summarize_pdf(pdf_content)
             if summary:
                 st.write("### Resumo do Documento:")
                 st.write(summary)
