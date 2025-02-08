@@ -55,7 +55,13 @@ if not df.empty:
     fre_url = generate_fre_url(document_number, selected_item)
 
     st.write(f"### Documento FRE da {selected_company} - Item {selected_item}")
-    st.write(f"[Clique aqui para acessar o documento]({fre_url})")
+    
+    st.markdown(
+        f'<a href="{fre_url}" target="_blank" onclick="window.open(this.href,\'_blank\',\'toolbar=0,scrollbars=0,resizable=1\'); return false;">'
+        f'<button style="width:100%; padding: 15px; font-size: 16px;">Clique aqui para visualizar o PDF</button>'
+        '</a>',
+        unsafe_allow_html=True
+    )
 
     if st.button("Baixar PDF"):
         pdf_content = download_pdf(fre_url)
