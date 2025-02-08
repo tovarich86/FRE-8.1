@@ -4,6 +4,6 @@ requests
 beautifulsoup4
 urllib3
 pdfplumber
-transformers==4.35.2
-torch==2.6.0
+textwrap3
+
 
