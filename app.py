@@ -7,6 +7,7 @@ import io
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, parse_qs
 from transformers import pipeline
+import pandas as pd
 
 # Baixa o modelo de sumarização
 summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
