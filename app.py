@@ -7,12 +7,14 @@ import nltk
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, parse_qs
 from PyPDF2 import PdfReader
-import tempfile
+
 from sumy.parsers.plaintext import PlaintextParser
 from sumy.nlp.tokenizers import Tokenizer
 from sumy.summarizers.lsa import LsaSummarizer
 from sumy.nlp.stemmers import Stemmer
 from sumy.utils import get_stop_words
+from PyPDF2 import PdfReader
+import tempfile
 
 # Baixar tokenizer do nltk (importante para evitar erros)
 nltk.download("punkt")
@@ -75,7 +77,13 @@ def summarize_pdf(pdf_content):
         return "⚠️ O documento não contém texto extraível. Pode ser um PDF escaneado."
 
     try:
-        # Usando Tokenizer("english") pois o Sumy não tem suporte oficial para português
+        # Testa se o tokenizador funciona corretamente
+        try:
+            Tokenizer("english")
+        except LookupError:
+            return "🚨 Erro: O tokenizador 'english' não está disponível no sumy."
+
+        # Processa o texto com sumy
         parser = PlaintextParser.from_string(text, Tokenizer("english"))
         stemmer = Stemmer("portuguese")
         summarizer = LsaSummarizer(stemmer)
@@ -86,6 +94,8 @@ def summarize_pdf(pdf_content):
     
     except Exception as e:
         return f"❌ Erro ao processar o PDF: {e}"
+
+
 df = load_data()
 
 if not df.empty:
