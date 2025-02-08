@@ -2,8 +2,8 @@ import streamlit as st
 import pandas as pd
 import base64
 import requests
+import zipfile
 import io
-import tempfile
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, parse_qs
 
@@ -11,20 +11,9 @@ CSV_URL = "https://github.com/tovarich86/FRE-8.1/raw/refs/heads/main/fre_cia_abe
 
 @st.cache_data
 def load_data():
-    """Carrega o CSV do GitHub e verifica as colunas disponíveis."""
+    """Carrega o CSV do GitHub e mantém em cache para evitar recarregamentos constantes."""
     try:
         df = pd.read_csv(CSV_URL, sep=';', dtype=str, encoding="latin1", on_bad_lines="skip")
-        
-       # # Exibe os nomes das colunas para depuração
-        #st.write("Colunas do CSV carregado:", df.columns.tolist())
-
-        # Garantir que as colunas esperadas existem
-        expected_columns = ["DENOM_CIA", "VERSAO", "LINK_DOC"]
-        for col in expected_columns:
-            if col not in df.columns:
-                st.error(f"Coluna ausente no CSV: {col}")
-                return pd.DataFrame()
-        
         return df.sort_values(by=["DENOM_CIA", "VERSAO"], ascending=[True, False])
     except Exception as e:
         st.error(f"Erro ao carregar o CSV do GitHub: {e}")
@@ -52,22 +41,11 @@ def download_pdf(url):
             return pdf_bytes
     return None
 
-def show_pdf_with_tempfile(pdf_content, company, item):
-    """Salva o PDF temporariamente e exibe um link para visualização."""
-    filename = f"{company.replace(' ', '_')}_Item_{item}.pdf"
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmpfile:
-        tmpfile.write(pdf_content)
-        tmpfile_path = tmpfile.name
-    
-    st.write("Visualize o PDF clicando no link abaixo:")
-    st.markdown(f"[Clique aqui para abrir o PDF]({tmpfile_path})", unsafe_allow_html=True)
-
 df = load_data()
 st.title("Visualizador de Documentos FRE - CVM")
 
 if not df.empty:
     selected_company = st.selectbox("Selecione a empresa", df["DENOM_CIA"].unique())
-
     df_filtered = df[df["DENOM_CIA"] == selected_company]
     latest_version = df_filtered.iloc[0]
     document_url = latest_version["LINK_DOC"]
@@ -77,13 +55,7 @@ if not df.empty:
     fre_url = generate_fre_url(document_number, selected_item)
 
     st.write(f"### Documento FRE da {selected_company} - Item {selected_item}")
-    
-    if st.button("Visualizar PDF no app"):
-        pdf_content = download_pdf(fre_url)
-        if pdf_content:
-            show_pdf_with_tempfile(pdf_content, selected_company, selected_item)
-        else:
-            st.error("Falha ao baixar o documento.")
+    st.write(f"[Clique aqui para acessar o documento]({fre_url})")
 
     if st.button("Baixar PDF"):
         pdf_content = download_pdf(fre_url)
