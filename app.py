@@ -62,7 +62,7 @@ if not df.empty:
     st.write(f"### Documento FRE da {selected_company} - Item {selected_item}")
     st.write(f"[Clique aqui para acessar o documento]({fre_url})")
 
-    if st.button("Baixar PDF"):
+    if st.button("Gerar link para downlaod PDF"):
         pdf_content = download_pdf(fre_url)
         if pdf_content:
             filename = f"{selected_company.replace(' ', '_')}_Item_{selected_item}.pdf"
