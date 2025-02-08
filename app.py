@@ -14,7 +14,6 @@ def load_data():
     if response.status_code == 200:
         zip_file = zipfile.ZipFile(io.BytesIO(response.content))
         
-        # Filtrando o nome correto do CSV dentro do ZIP
         csv_filename = [name for name in zip_file.namelist() if name.endswith(".csv")][0]
         
         with zip_file.open(csv_filename) as file:
@@ -23,12 +22,12 @@ def load_data():
                 st.success("Dados carregados com sucesso!")
             except Exception as e:
                 st.error(f"Erro ao carregar CSV: {e}")
-                return pd.DataFrame()  # Retorna um DataFrame vazio se falhar
+                return pd.DataFrame()
         
         return df
     else:
         st.error("Erro ao baixar os dados da CVM")
-        return pd.DataFrame()  # Retorna um DataFrame vazio se falhar
+        return pd.DataFrame()
 
 def extract_document_number(url):
     parsed_url = urlparse(url)
@@ -68,7 +67,14 @@ if not df.empty:
     fre_url = generate_fre_url(document_number, selected_item)
 
     st.write(f"### Documento FRE da {selected_company} - Item {selected_item}")
-    st.write(f"[Clique aqui para acessar o documento]({fre_url})")
+
+    if st.button("Visualizar PDF no app"):
+        pdf_content = download_pdf(fre_url)
+        if pdf_content:
+            st.write("Pré-visualização do PDF:")
+            st.pdf(io.BytesIO(pdf_content))
+        else:
+            st.error("Falha ao baixar o documento.")
 
     if st.button("Baixar PDF"):
         pdf_content = download_pdf(fre_url)
@@ -81,3 +87,14 @@ if not df.empty:
             )
         else:
             st.error("Falha ao baixar o documento.")
+
+# Para hospedagem no GitHub e execução no Streamlit Cloud:
+# 1. Salve este arquivo como `app.py`
+# 2. Crie um arquivo `requirements.txt` com o seguinte conteúdo:
+# streamlit
+# pandas
+# requests
+# beautifulsoup4
+# lxml
+# 3. Faça upload para um repositório no GitHub
+# 4. Vá até https://share.streamlit.io e conecte ao repositório
