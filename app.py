@@ -7,12 +7,24 @@ import tempfile
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, parse_qs
 
+CSV_URL = "https://github.com/tovarich86/FRE-8.1/raw/refs/heads/main/fre_cia_aberta_2024.csv"  # Substitua pelo link correto
+
 @st.cache_data
 def load_data():
-    """Carrega o CSV do GitHub e mantém em cache para evitar recarregamentos constantes."""
-    url = "https://github.com/tovarich86/FRE-8.1/blob/main/fre_cia_aberta_2024.csv"  # Substitua pela sua URL real
+    """Carrega o CSV do GitHub e verifica as colunas disponíveis."""
     try:
-        df = pd.read_csv(url, sep=';', dtype=str, encoding="latin1", on_bad_lines="skip")
+        df = pd.read_csv(CSV_URL, sep=';', dtype=str, encoding="latin1", on_bad_lines="skip")
+        
+        # Exibe os nomes das colunas para depuração
+        st.write("Colunas do CSV carregado:", df.columns.tolist())
+
+        # Garantir que as colunas esperadas existem
+        expected_columns = ["DENOM_CIA", "VERSAO", "LINK_DOC"]
+        for col in expected_columns:
+            if col not in df.columns:
+                st.error(f"Coluna ausente no CSV: {col}")
+                return pd.DataFrame()
+        
         return df.sort_values(by=["DENOM_CIA", "VERSAO"], ascending=[True, False])
     except Exception as e:
         st.error(f"Erro ao carregar o CSV do GitHub: {e}")
