@@ -10,12 +10,13 @@ from urllib.parse import urlparse, parse_qs
 from PyPDF2 import PdfReader
 import tempfile
 
-# Baixa automaticamente o modelo spaCy para português
+
+# Verifica se o modelo spaCy está instalado e, se não estiver, faz o download
 try:
     nlp = spacy.load("pt_core_news_sm")
-except:
-    st.error("Erro ao carregar o modelo de NLP. Execute: python -m spacy download pt_core_news_sm")
-    st.stop()
+except OSError:
+    subprocess.run([sys.executable, "-m", "spacy", "download", "pt_core_news_sm"], check=True)
+    nlp = spacy.load("pt_core_news_sm")
 
 CSV_URL = "https://github.com/tovarich86/FRE-8.1/raw/refs/heads/main/fre_cia_aberta_2024.csv"
 
