@@ -15,8 +15,8 @@ def load_data():
     try:
         df = pd.read_csv(CSV_URL, sep=';', dtype=str, encoding="latin1", on_bad_lines="skip")
         
-        # Exibe os nomes das colunas para depuração
-        st.write("Colunas do CSV carregado:", df.columns.tolist())
+       # # Exibe os nomes das colunas para depuração
+        #st.write("Colunas do CSV carregado:", df.columns.tolist())
 
         # Garantir que as colunas esperadas existem
         expected_columns = ["DENOM_CIA", "VERSAO", "LINK_DOC"]
