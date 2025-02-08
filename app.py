@@ -65,20 +65,25 @@ def summarize_pdf(pdf_content, api_key):
     
     reader = PdfReader(tmpfile_path)
     text = "\n".join([page.extract_text() for page in reader.pages if page.extract_text()])
-    
+
     if len(text) > 5000:  # Limita o tamanho do texto para evitar cortes
         text = text[:5000]
-    
-    openai.api_key = api_key  # Usa a API Key inserida pelo usuário
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=[
-            {"role": "system", "content": "Resuma o seguinte documento destacando os principais pontos:"},
-            {"role": "user", "content": text}
-        ]
-    )
-    return response["choices"][0]["message"]["content"]
 
+    openai_client = openai.OpenAI(api_key=api_key)  # Cliente atualizado
+
+    try:
+        response = openai_client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "Resuma o seguinte documento destacando os principais pontos:"},
+                {"role": "user", "content": text}
+            ]
+        )
+        return response.choices[0].message.content  # Ajuste conforme nova API
+    except Exception as e:
+        st.error(f"Erro ao gerar o resumo: {e}")
+        return None
+        
 df = load_data()
 
 if not df.empty:
