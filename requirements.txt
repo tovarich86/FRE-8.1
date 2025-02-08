@@ -5,4 +5,3 @@ beautifulsoup4
 PyPDF2
 spacy
 textwrap
-
