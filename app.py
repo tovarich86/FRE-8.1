@@ -9,6 +9,16 @@ from bs4 import BeautifulSoup
 from urllib.parse import urlparse, parse_qs
 from PyPDF2 import PdfReader
 import tempfile
+import spacy
+import subprocess
+import sys
+
+# Tenta carregar o modelo spaCy, se não estiver instalado, faz o download automaticamente
+try:
+    nlp = spacy.load("pt_core_news_sm")
+except OSError:
+    subprocess.run([sys.executable, "-m", "spacy", "download", "pt_core_news_sm"], check=True)
+    nlp = spacy.load("pt_core_news_sm")
 
 
 # Verifica se o modelo spaCy está instalado e, se não estiver, faz o download
