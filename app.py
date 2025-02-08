@@ -51,6 +51,14 @@ def download_pdf(url):
             return pdf_bytes
     return None
 
+def show_pdf(pdf_content):
+    """Exibe o PDF no Streamlit usando um visualizador embutido."""
+    base64_pdf = base64.b64encode(pdf_content).decode("utf-8")
+    pdf_display = f"""
+    <iframe src="data:application/pdf;base64,{base64_pdf}" width="700" height="900" type="application/pdf"></iframe>
+    """
+    st.components.v1.html(pdf_display, height=950)
+
 st.title("Visualizador de Documentos FRE - CVM")
 df = load_data()
 
@@ -72,7 +80,7 @@ if not df.empty:
         pdf_content = download_pdf(fre_url)
         if pdf_content:
             st.write("Pré-visualização do PDF:")
-            st.pdf(io.BytesIO(pdf_content))
+            show_pdf(pdf_content)
         else:
             st.error("Falha ao baixar o documento.")
 
