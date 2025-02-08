@@ -1,65 +1,33 @@
 import streamlit as st
-import pandas as pd
-import base64
 import requests
-import io
-import spacy
+import base64
+import pdfplumber
 import textwrap
+import io
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, parse_qs
-from PyPDF2 import PdfReader
-import tempfile
-import spacy
-import subprocess
-import sys
+from transformers import pipeline
 
-# Tenta carregar o modelo spaCy, se não estiver instalado, faz o download automaticamente
-try:
-    nlp = spacy.load("pt_core_news_sm")
-except OSError:
-    subprocess.run([sys.executable, "-m", "spacy", "download", "pt_core_news_sm"], check=True)
-    nlp = spacy.load("pt_core_news_sm")
-
-
-# Verifica se o modelo spaCy está instalado e, se não estiver, faz o download
-try:
-    nlp = spacy.load("pt_core_news_sm")
-except OSError:
-    subprocess.run([sys.executable, "-m", "spacy", "download", "pt_core_news_sm"], check=True)
-    nlp = spacy.load("pt_core_news_sm")
+# Baixa o modelo de sumarização
+summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
 
 CSV_URL = "https://github.com/tovarich86/FRE-8.1/raw/refs/heads/main/fre_cia_aberta_2024.csv"
 
 st.title("📄 Visualizador de Documentos FRE - CVM")
 
-def load_data():
-    """Carrega os dados CSV diretamente do repositório GitHub"""
-    response = requests.get(CSV_URL)
-    if response.status_code == 200:
-        try:
-            df = pd.read_csv(io.StringIO(response.text), sep=';', dtype=str, encoding="latin1", on_bad_lines="skip")
-            st.success("✅ Dados carregados com sucesso!")
-            return df.sort_values(by=["DENOM_CIA", "VERSAO"], ascending=[True, False])
-        except Exception as e:
-            st.error(f"❌ Erro ao carregar CSV: {e}")
-            return pd.DataFrame()
-    else:
-        st.error("❌ Erro ao baixar os dados da CVM")
-        return pd.DataFrame()
-
 def extract_document_number(url):
-    """Extrai o número sequencial do documento a partir da URL"""
+    """Extrai o número sequencial do documento da URL"""
     parsed_url = urlparse(url)
     query_params = parse_qs(parsed_url.query)
     return query_params.get("NumeroSequencialDocumento", [None])[0]
 
 def generate_fre_url(doc_number, item):
-    """Gera a URL do documento FRE no site da CVM"""
+    """Gera a URL do documento FRE"""
     codigo_quadro = "8120" if item == "8.4" else "8030"
-    return f"https://www.rad.cvm.gov.br/ENET/frmExibirArquivoFRE.aspx?NumeroSequencialDocumento={doc_number}&CodigoGrupo=8000&CodigoQuadro={codigo_quadro}&Tipo=&RelatorioRevisaoEspecial=&CodTipoDocumento=9"
+    return f"https://www.rad.cvm.gov.br/ENET/frmExibirArquivoFRE.aspx?NumeroSequencialDocumento={doc_number}&CodigoGrupo=8000&CodigoQuadro={codigo_quadro}"
 
 def download_pdf(url):
-    """Baixa o PDF codificado em Base64 do site da CVM"""
+    """Baixa o PDF em Base64 do site da CVM"""
     headers = {"User-Agent": "Mozilla/5.0"}
     response = requests.get(url, headers=headers)
     
@@ -73,34 +41,25 @@ def download_pdf(url):
             return pdf_bytes
     return None
 
-def summarize_pdf(pdf_content):
-    """Lê o PDF e gera um resumo eficiente usando spaCy"""
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmpfile:
-        tmpfile.write(pdf_content)
-        tmpfile_path = tmpfile.name
+def extract_text_from_pdf(pdf_content):
+    """Extrai texto do PDF com pdfplumber"""
+    text = ""
+    with pdfplumber.open(io.BytesIO(pdf_content)) as pdf:
+        for page in pdf.pages:
+            text += page.extract_text() + "\n"
+    return text.strip()
 
-    reader = PdfReader(tmpfile_path)
-    text = "\n".join([page.extract_text() for page in reader.pages if page.extract_text()])
+def summarize_text(text):
+    """Gera um resumo do texto extraído"""
+    if len(text) < 500:
+        return "⚠️ O documento não contém informações suficientes para resumo."
+    
+    text_chunks = [text[i:i+1024] for i in range(0, len(text), 1024)]
+    summary = " ".join([summarizer(chunk, max_length=150, min_length=50, do_sample=False)[0]['summary_text'] for chunk in text_chunks])
+    return textwrap.fill(summary, width=80)
 
-    if not text.strip():
-        return "⚠️ O documento não contém texto extraível. Pode ser um PDF escaneado."
-
-    try:
-        # Processa o texto com spaCy
-        doc = nlp(text)
-
-        # Extrai as frases mais importantes (simplesmente pegando as primeiras 10 frases)
-        sentences = [sent.text for sent in doc.sents]
-        summary = " ".join(sentences[:10])
-
-        # Formata o resumo para melhor visualização
-        wrapped_summary = textwrap.fill(summary, width=80)
-        return wrapped_summary
-
-    except Exception as e:
-        return f"❌ Erro ao processar o PDF: {e}"
-
-df = load_data()
+df = pd.read_csv(CSV_URL, sep=';', dtype=str, encoding="latin1", on_bad_lines="skip")
+df = df.sort_values(by=["DENOM_CIA", "VERSAO"], ascending=[True, False])
 
 if not df.empty:
     selected_company = st.selectbox("🏢 Selecione a empresa", df["DENOM_CIA"].unique())
@@ -115,12 +74,12 @@ if not df.empty:
     st.write(f"### 📄 Documento FRE da {selected_company} - Item {selected_item}")
     st.write(f"[🔗 Clique aqui para acessar o documento]({fre_url})")
 
-    if st.button("⬇️ Gerar link para download PDF"):
+    if st.button("⬇️ Baixar PDF"):
         pdf_content = download_pdf(fre_url)
         if pdf_content:
             filename = f"{selected_company.replace(' ', '_')}_Item_{selected_item}.pdf"
             st.download_button(
-                label="📥 Clique aqui para baixar o PDF",
+                label="📥 Baixar PDF",
                 data=pdf_content,
                 file_name=filename,
                 mime="application/pdf"
@@ -131,9 +90,12 @@ if not df.empty:
     if st.button("📄 Gerar Resumo do Documento"):
         pdf_content = download_pdf(fre_url)
         if pdf_content:
-            summary = summarize_pdf(pdf_content)
-            if summary:
+            extracted_text = extract_text_from_pdf(pdf_content)
+            if extracted_text:
+                summary = summarize_text(extracted_text)
                 st.write("### ✍️ Resumo do Documento:")
                 st.write(summary)
+            else:
+                st.error("❌ O PDF não contém texto extraível.")
         else:
-            st.error("❌ Erro ao baixar o documento para resumo. Verifique se ele está disponível.")
+            st.error("❌ Erro ao baixar o documento para resumo.")
