@@ -63,7 +63,7 @@ def download_pdf(url):
     return None
 
 def summarize_pdf(pdf_content):
-    """Lê o PDF e gera um resumo dos principais pontos usando sumy"""
+    """Lê o PDF e gera um resumo usando sumy"""
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmpfile:
         tmpfile.write(pdf_content)
         tmpfile_path = tmpfile.name
@@ -71,21 +71,28 @@ def summarize_pdf(pdf_content):
     reader = PdfReader(tmpfile_path)
     text = "\n".join([page.extract_text() for page in reader.pages if page.extract_text()])
 
-    # Verifica se conseguiu extrair texto
     if not text.strip():
-        return "Não foi possível extrair texto do PDF."
+        return "⚠️ O documento não contém texto extraível. Pode ser um PDF escaneado."
 
     try:
+        # Confirma que o nltk tem os pacotes necessários
+        nltk.download("punkt")
+
+        # Tokenização para português
         parser = PlaintextParser.from_string(text, Tokenizer("portuguese"))
         stemmer = Stemmer("portuguese")
         summarizer = LsaSummarizer(stemmer)
         summarizer.stop_words = get_stop_words("portuguese")
 
+        # Gerar resumo com no máximo 10 frases
         summary = summarizer(parser.document, sentences_count=10)
         return " ".join([str(sentence) for sentence in summary])
-    except LookupError:
-        return "Erro ao carregar o tokenizador. Tente reiniciar o aplicativo."
+    
+    except LookupError as e:
+        return f"🚨 Erro ao carregar o tokenizador: {e}. Tente reiniciar o aplicativo."
 
+    except Exception as e:
+        return f"❌ Ocorreu um erro ao processar o PDF: {e}"
 df = load_data()
 
 if not df.empty:
