@@ -75,24 +75,27 @@ def summarize_pdf(pdf_content):
         return "⚠️ O documento não contém texto extraível. Pode ser um PDF escaneado."
 
     try:
-        # Confirma que o nltk tem os pacotes necessários
+        # Força o download do tokenizer caso falte
+        import nltk
         nltk.download("punkt")
 
-        # Tokenização para português
+        # Testa se o tokenizador está funcionando
+        try:
+            Tokenizer("portuguese")
+        except LookupError:
+            return "🚨 Erro: O tokenizador 'portuguese' não está disponível no sumy."
+
+        # Processa o texto com sumy
         parser = PlaintextParser.from_string(text, Tokenizer("portuguese"))
         stemmer = Stemmer("portuguese")
         summarizer = LsaSummarizer(stemmer)
         summarizer.stop_words = get_stop_words("portuguese")
 
-        # Gerar resumo com no máximo 10 frases
         summary = summarizer(parser.document, sentences_count=10)
         return " ".join([str(sentence) for sentence in summary])
     
-    except LookupError as e:
-        return f"🚨 Erro ao carregar o tokenizador: {e}. Tente reiniciar o aplicativo."
-
     except Exception as e:
-        return f"❌ Ocorreu um erro ao processar o PDF: {e}"
+        return f"❌ Erro ao processar o PDF: {e}"
 df = load_data()
 
 if not df.empty:
