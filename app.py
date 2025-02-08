@@ -2,13 +2,24 @@ import streamlit as st
 import pandas as pd
 import base64
 import requests
+import zipfile
+import io
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, parse_qs
 
 def load_data():
     url = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/FRE/DADOS/fre_cia_aberta_2024.zip"
-    df = pd.read_csv(url, sep=';', dtype=str)
-    return df
+    
+    response = requests.get(url)
+    if response.status_code == 200:
+        zip_file = zipfile.ZipFile(io.BytesIO(response.content))
+        csv_filename = [name for name in zip_file.namelist() if name.endswith(".csv")][0]  # Pega o nome do CSV
+        with zip_file.open(csv_filename) as file:
+            df = pd.read_csv(file, sep=';', dtype=str)
+        return df
+    else:
+        st.error("Erro ao baixar os dados da CVM")
+        return pd.DataFrame()  # Retorna um DataFrame vazio em caso de erro
 
 def extract_document_number(url):
     parsed_url = urlparse(url)
@@ -35,28 +46,29 @@ def download_pdf(url):
 st.title("Visualizador de Documentos FRE - CVM")
 df = load_data()
 
-df = df.sort_values(by=["DENOM_CIA", "VERSAO"], ascending=[True, False])
-selected_company = st.selectbox("Selecione a empresa", df["DENOM_CIA"].unique())
+if not df.empty:
+    df = df.sort_values(by=["DENOM_CIA", "VERSAO"], ascending=[True, False])
+    selected_company = st.selectbox("Selecione a empresa", df["DENOM_CIA"].unique())
 
-df_filtered = df[df["DENOM_CIA"] == selected_company]
-latest_version = df_filtered.iloc[0]
-document_url = latest_version["LINK_DOC"]
-document_number = extract_document_number(document_url)
+    df_filtered = df[df["DENOM_CIA"] == selected_company]
+    latest_version = df_filtered.iloc[0]
+    document_url = latest_version["LINK_DOC"]
+    document_number = extract_document_number(document_url)
 
-selected_item = st.radio("Selecione o item", ["8.1", "8.4"])
-fre_url = generate_fre_url(document_number, selected_item)
+    selected_item = st.radio("Selecione o item", ["8.1", "8.4"])
+    fre_url = generate_fre_url(document_number, selected_item)
 
-st.write(f"### Documento FRE da {selected_company} - Item {selected_item}")
-st.write(f"[Clique aqui para acessar o documento]({fre_url})")
+    st.write(f"### Documento FRE da {selected_company} - Item {selected_item}")
+    st.write(f"[Clique aqui para acessar o documento]({fre_url})")
 
-if st.button("Baixar PDF"):
-    pdf_content = download_pdf(fre_url)
-    if pdf_content:
-        st.download_button(
-            label="Clique aqui para baixar o PDF",
-            data=pdf_content,
-            file_name="documento_cvm.pdf",
-            mime="application/pdf"
-        )
-    else:
-        st.error("Falha ao baixar o documento.")
+    if st.button("Baixar PDF"):
+        pdf_content = download_pdf(fre_url)
+        if pdf_content:
+            st.download_button(
+                label="Clique aqui para baixar o PDF",
+                data=pdf_content,
+                file_name="documento_cvm.pdf",
+                mime="application/pdf"
+            )
+        else:
+            st.error("Falha ao baixar o documento.")
