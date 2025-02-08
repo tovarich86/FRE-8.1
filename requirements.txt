@@ -1,2 +1,4 @@
 streamlite
 pandas
+requests
+beautifulsoup4
