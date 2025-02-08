@@ -31,16 +31,21 @@ def generate_fre_url(doc_number, item):
 def download_pdf(url):
     headers = {"User-Agent": "Mozilla/5.0"}
     response = requests.get(url, headers=headers)
-    
+
     if response.status_code == 200:
         soup = BeautifulSoup(response.text, "html.parser")
         hidden_input = soup.find("input", {"id": "hdnConteudoArquivo"})
-        
-        if hidden_input:
+
+        if hidden_input and "value" in hidden_input.attrs:  # Verifica se o campo "value" existe
             base64_string = hidden_input["value"]
             pdf_bytes = base64.b64decode(base64_string)
             return pdf_bytes
-    return None
+        else:
+            st.error("Erro: O conteúdo do PDF não foi encontrado na página.")
+            return None
+    else:
+        st.error(f"Erro ao acessar a página: {response.status_code}")
+        return None
 
 df = load_data()
 st.title("Visualizador de Documentos FRE - CVM")
