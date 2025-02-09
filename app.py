@@ -2,6 +2,7 @@ import streamlit as st
 import requests
 import base64
 import pandas as pd
+import re
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, parse_qs
 
@@ -17,12 +18,13 @@ def load_data():
     df_fre = pd.read_csv(CSV_URL, sep=';', dtype=str, encoding="utf-8")
     df_planos = pd.read_excel(PLANOS_URL, dtype=str)
     
-    # Padronizar nomes das empresas removendo variações de "S.A" e "S/A"
+    # Função para padronizar nomes de empresas
     def normalize_company_name(name):
         if pd.isna(name):
             return None
         name = name.upper().strip()
-        name = name.replace(" S/A", " S.A")  # Padronizar "S/A" para "S.A"
+        # Padronizar todas as variações de S.A., S.A, S/A, SA para "S.A."
+        name = re.sub(r"\s+(S\.?A\.?|S/A|SA)$", " S.A.", name)
         return name
     
     df_fre["DENOM_CIA"] = df_fre["DENOM_CIA"].apply(normalize_company_name)
