@@ -4,6 +4,7 @@ import base64
 import pandas as pd
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, parse_qs
+from fuzzywuzzy import process
 
 st.title("📄 Visualizador de Documentos FRE - CVM")
 
@@ -13,10 +14,18 @@ PLANOS_URL = "https://github.com/tovarich86/FRE-8.1/raw/refs/heads/main/tabela_c
 
 @st.cache_data
 def load_data():
-    """Carrega os dados do CSV e do Excel"""
+    """Carrega os dados do CSV e do Excel e padroniza os nomes das empresas"""
     df_fre = pd.read_csv(CSV_URL, sep=';', dtype=str, encoding="latin1", on_bad_lines="skip")
     df_planos = pd.read_excel(PLANOS_URL, dtype=str)
-    df_planos.columns = df_planos.columns.str.strip()  # Remover espaços extras nos nomes das colunas
+    
+    # Remover espaços extras e padronizar para maiúsculas
+    df_fre["DENOM_CIA"] = df_fre["DENOM_CIA"].str.upper().str.strip()
+    df_planos["Empresa"] = df_planos["Empresa"].str.upper().str.strip()
+    
+    # Aplicar fuzzy matching para corrigir diferenças de grafia
+    empresa_corrigida = {empresa: process.extractOne(empresa, df_fre["DENOM_CIA"])[0] for empresa in df_planos["Empresa"].unique()}
+    df_planos["Empresa"] = df_planos["Empresa"].map(empresa_corrigida)
+    
     return df_fre, df_planos
 
 df, df_planos = load_data()
