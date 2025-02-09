@@ -4,28 +4,18 @@ import base64
 import pandas as pd
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, parse_qs
-from fuzzywuzzy import process
 
 st.title("📄 Visualizador de Documentos FRE - CVM")
 
-# URLs dos arquivos CSV e Excel
-CSV_URL = "https://github.com/tovarich86/FRE-8.1/raw/refs/heads/main/fre_cia_aberta_2024.csv"
-PLANOS_URL = "https://github.com/tovarich86/FRE-8.1/raw/refs/heads/main/tabela_consolidada_cvm.xlsx"
+# URLs dos arquivos CSV e Excel (versões otimizadas no GitHub)
+CSV_URL = "https://github.com/tovarich86/FRE-8.1/raw/main/fre_cia_aberta_2024_otimizado.csv"
+PLANOS_URL = "https://github.com/tovarich86/FRE-8.1/raw/main/tabela_consolidada_cvm_otimizado.xlsx"
 
 @st.cache_data
 def load_data():
-    """Carrega os dados do CSV e do Excel e padroniza os nomes das empresas"""
-    df_fre = pd.read_csv(CSV_URL, sep=';', dtype=str, encoding="latin1", on_bad_lines="skip")
+    """Carrega os dados otimizados do CSV e do Excel"""
+    df_fre = pd.read_csv(CSV_URL, sep=';', dtype=str, encoding="utf-8")
     df_planos = pd.read_excel(PLANOS_URL, dtype=str)
-    
-    # Remover espaços extras e padronizar para maiúsculas
-    df_fre["DENOM_CIA"] = df_fre["DENOM_CIA"].str.upper().str.strip()
-    df_planos["Empresa"] = df_planos["Empresa"].str.upper().str.strip()
-    
-    # Aplicar fuzzy matching para corrigir diferenças de grafia
-    empresa_corrigida = {empresa: process.extractOne(empresa, df_fre["DENOM_CIA"])[0] for empresa in df_planos["Empresa"].unique()}
-    df_planos["Empresa"] = df_planos["Empresa"].map(empresa_corrigida)
-    
     return df_fre, df_planos
 
 df, df_planos = load_data()
@@ -66,14 +56,6 @@ if not df.empty:
     selected_company = st.selectbox("🏢 Selecione a empresa", df["DENOM_CIA"].unique())
     df_filtered = df[df["DENOM_CIA"] == selected_company]
     
-    # Verificar se a empresa possui planos
-    planos_empresa = df_planos[df_planos["Empresa"] == selected_company]
-    if not planos_empresa.empty:
-        st.write("📋 **Planos de Remuneração encontrados:**")
-        st.dataframe(planos_empresa[["Categoria", "Data referencia", "Status", "Link"]])
-    else:
-        st.write("❌ Nenhum plano de remuneração encontrado para esta empresa.")
-    
     selected_item = st.radio("📑 Selecione o item", ["8.1", "8.4"])
     document_url = df_filtered.iloc[0]["LINK_DOC"]
     document_number = extract_document_number(document_url)
@@ -99,3 +81,16 @@ if not df.empty:
                 st.error("❌ Falha ao baixar o documento.")
     else:
         st.warning("⚠️ Documento não encontrado para esta empresa.")
+    
+    # Verificar se a empresa possui planos e exibir ao final
+    planos_empresa = df_planos[df_planos["Empresa"] == selected_company]
+    if not planos_empresa.empty:
+        st.write("---")
+        st.write("📋 **Planos de Remuneração encontrados:**")
+        
+        # Transformar o link em hyperlink
+        planos_empresa["Link"] = planos_empresa["Link"].apply(lambda x: f'<a href="{x}" target="_blank">Abrir Documento</a>')
+        
+        st.write(planos_empresa.to_html(escape=False, index=False), unsafe_allow_html=True)
+    else:
+        st.write("❌ Nenhum plano de remuneração encontrado para esta empresa.")
