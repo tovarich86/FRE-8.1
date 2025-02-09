@@ -2,8 +2,6 @@ streamlit
 pandas
 requests
 beautifulsoup4
-urllib3
-pdfplumber
-textwrap3
 openpyxl
-
+fuzzywuzzy
+python-Levenshtein
