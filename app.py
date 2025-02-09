@@ -1,29 +1,25 @@
 import streamlit as st
 import requests
 import base64
-import pdfplumber
-import io
+import pandas as pd
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, parse_qs
-import pandas as pd
-
-# URL do CSV contendo os documentos FRE
-CSV_URL = "https://github.com/tovarich86/FRE-8.1/raw/refs/heads/main/fre_cia_aberta_2024.csv"
 
 st.title("📄 Visualizador de Documentos FRE - CVM")
 
+# URLs dos arquivos CSV e Excel
+CSV_URL = "https://github.com/tovarich86/FRE-8.1/raw/refs/heads/main/fre_cia_aberta_2024.csv"
+PLANOS_URL = "https://github.com/tovarich86/FRE-8.1/raw/refs/heads/main/tabela_consolidada_cvm.xlsx"
+
 @st.cache_data
 def load_data():
-    """Carrega e processa o CSV com os dados das empresas"""
-    try:
-        df = pd.read_csv(CSV_URL, sep=';', dtype=str, encoding="latin1", on_bad_lines="skip")
-        df = df.sort_values(by=["DENOM_CIA", "VERSAO"], ascending=[True, False])
-        return df
-    except Exception as e:
-        st.error(f"Erro ao carregar os dados: {e}")
-        return pd.DataFrame()
+    """Carrega os dados do CSV e do Excel"""
+    df_fre = pd.read_csv(CSV_URL, sep=';', dtype=str, encoding="latin1", on_bad_lines="skip")
+    df_planos = pd.read_excel(PLANOS_URL, dtype=str)
+    return df_fre, df_planos
 
-df = load_data()
+df, df_planos = load_data()
+df = df.sort_values(by=["DENOM_CIA", "VERSAO"], ascending=[True, False])
 
 def extract_document_number(url):
     """Extrai o número sequencial do documento da URL"""
@@ -58,24 +54,26 @@ def download_pdf(url):
 
 if not df.empty:
     selected_company = st.selectbox("🏢 Selecione a empresa", df["DENOM_CIA"].unique())
-
     df_filtered = df[df["DENOM_CIA"] == selected_company]
     
-    # Exibir tabela com versões disponíveis
-    st.write("📊 **Versões disponíveis:**")
-    st.dataframe(df_filtered[["VERSAO", "DT_REFER", "DT_ENVIO", "LINK_DOC"]])
-
-    latest_version = df_filtered.iloc[0]
-    document_url = latest_version["LINK_DOC"]
+    # Verificar se a empresa possui planos
+    planos_empresa = df_planos[df_planos["Empresa"] == selected_company]
+    if not planos_empresa.empty:
+        st.write("📋 **Planos de Remuneração encontrados:**")
+        st.dataframe(planos_empresa[["Categoria", "Data referência", "Status", "Link"]])
+    else:
+        st.write("❌ Nenhum plano de remuneração encontrado para esta empresa.")
+    
+    selected_item = st.radio("📑 Selecione o item", ["8.1", "8.4"])
+    document_url = df_filtered.iloc[0]["LINK_DOC"]
     document_number = extract_document_number(document_url)
-
+    
     if document_number:
-        selected_item = st.radio("📑 Selecione o item", ["8.1", "8.4"])
         fre_url = generate_fre_url(document_number, selected_item)
-
+        
         st.write(f"### 📄 Documento FRE da {selected_company} - Item {selected_item}")
         st.write(f"[🔗 Abrir documento em uma nova aba]({fre_url})")
-
+        
         if st.button("⬇️ Gerar link para download PDF"):
             with st.spinner("Baixando documento..."):
                 pdf_content = download_pdf(fre_url)
