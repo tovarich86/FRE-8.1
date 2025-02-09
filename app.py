@@ -16,6 +16,7 @@ def load_data():
     """Carrega os dados do CSV e do Excel"""
     df_fre = pd.read_csv(CSV_URL, sep=';', dtype=str, encoding="latin1", on_bad_lines="skip")
     df_planos = pd.read_excel(PLANOS_URL, dtype=str)
+    df_planos.columns = df_planos.columns.str.strip()  # Remover espaços extras nos nomes das colunas
     return df_fre, df_planos
 
 df, df_planos = load_data()
@@ -60,7 +61,7 @@ if not df.empty:
     planos_empresa = df_planos[df_planos["Empresa"] == selected_company]
     if not planos_empresa.empty:
         st.write("📋 **Planos de Remuneração encontrados:**")
-        st.dataframe(planos_empresa[["Categoria", "Data referência", "Status", "Link"]])
+        st.dataframe(planos_empresa[["Categoria", "Data referencia", "Status", "Link"]])
     else:
         st.write("❌ Nenhum plano de remuneração encontrado para esta empresa.")
     
