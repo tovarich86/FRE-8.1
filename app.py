@@ -16,6 +16,18 @@ def load_data():
     """Carrega os dados otimizados do CSV e do Excel"""
     df_fre = pd.read_csv(CSV_URL, sep=';', dtype=str, encoding="utf-8")
     df_planos = pd.read_excel(PLANOS_URL, dtype=str)
+    
+    # Padronizar nomes das empresas removendo variações de "S.A" e "S/A"
+    def normalize_company_name(name):
+        if pd.isna(name):
+            return None
+        name = name.upper().strip()
+        name = name.replace(" S/A", " S.A")  # Padronizar "S/A" para "S.A"
+        return name
+    
+    df_fre["DENOM_CIA"] = df_fre["DENOM_CIA"].apply(normalize_company_name)
+    df_planos["Empresa"] = df_planos["Empresa"].apply(normalize_company_name)
+    
     return df_fre, df_planos
 
 df, df_planos = load_data()
