@@ -69,3 +69,16 @@ if empresas_unicas:
             st.write(f"[🔗 Abrir documento em uma nova aba]({fre_url})")
         else:
             st.warning("⚠️ Documento não encontrado para esta empresa.")
+    
+    # Verificar se a empresa possui planos e exibir ao final
+    planos_empresa = df_planos[df_planos["Empresa"] == selected_company]
+    if not planos_empresa.empty:
+        st.write("---")
+        st.write("📋 **Planos de Remuneração encontrados:**")
+        
+        # Transformar o link em hyperlink
+        planos_empresa["Link"] = planos_empresa["Link"].apply(lambda x: f'<a href="{x}" target="_blank">Abrir Documento</a>')
+        
+        st.write(planos_empresa.to_html(escape=False, index=False), unsafe_allow_html=True)
+    else:
+        st.write("❌ Nenhum plano de remuneração encontrado para esta empresa.")
