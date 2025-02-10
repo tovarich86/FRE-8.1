@@ -44,9 +44,9 @@ df_diferencas = pd.DataFrame({
 })
 
 # Exibir os resultados
-st.title("📊 Comparação de Empresas entre CSV e Excel")
-st.write("Empresas que estão em um dos arquivos, mas não no outro:")
-st.dataframe(df_diferencas)
+#st.title("📊 Comparação de Empresas entre CSV e Excel")
+#st.write("Empresas que estão em um dos arquivos, mas não no outro:")
+#st.dataframe(df_diferencas)
 
 # Garantir que todas as empresas do Excel aparecem na seleção
 empresas_unicas = sorted(empresas_csv | empresas_excel)
@@ -61,8 +61,8 @@ df_csv["Item_8.4_Disponível"] = df_csv["LINK_DOC"].notna()
 
 df_itens = df_csv[["DENOM_CIA", "Item_8.1_Disponível", "Item_8.4_Disponível"]].drop_duplicates()
 
-st.write("Empresas que possuem ou não informações disponíveis para os itens 8.1 e 8.4:")
-st.dataframe(df_itens)
+#st.write("Empresas que possuem ou não informações disponíveis para os itens 8.1 e 8.4:")
+#st.dataframe(df_itens)
 
 # Exibir mensagem caso a empresa não esteja no CSV
 if selected_company not in empresas_csv:
