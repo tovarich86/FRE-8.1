@@ -9,7 +9,7 @@ from urllib.parse import urlparse, parse_qs
 st.title("📄 Visualizador de Documentos FRE - CVM")
 
 # URLs dos arquivos CSV e Excel (versões otimizadas no GitHub)
-CSV_URL = "https://github.com/tovarich86/FRE-8.1/raw/main/fre_cia_aberta_2024_otimizado.csv"
+CSV_URL = "https://github.com/tovarich86/FRE-8.1/raw/main/fre_cia_aberta_2025.csv"
 PLANOS_URL = "https://github.com/tovarich86/FRE-8.1/raw/main/tabela_consolidada_cvm_otimizado.xlsx"
 
 @st.cache_data
