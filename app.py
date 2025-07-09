@@ -15,7 +15,7 @@ PLANOS_URL = "https://github.com/tovarich86/FRE-8.1/raw/main/tabela_consolidada_
 @st.cache_data
 def load_data():
     """Carrega os dados otimizados do CSV e do Excel"""
-    df_fre = pd.read_csv(CSV_URL, sep=';', dtype=str, encoding="utf-8")
+    df_fre = pd.read_csv(CSV_URL, sep=';', dtype=str, encoding="latin-1")
     df_planos = pd.read_excel(PLANOS_URL, dtype=str)
     
     # Função para padronizar nomes de empresas
